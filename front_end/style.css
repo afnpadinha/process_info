@@ -124,6 +124,16 @@ body {
     );
     border: 5px solid #a08000;
     animation: spin-wheel 5s linear infinite;
+    overflow: hidden;
+}
+
+.wheel-inner-ring::after {
+    content: '';
+    position: absolute;
+    inset: 40px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.7) 90%);
+    pointer-events: none;
 }
 
 .wheel-center-pivot {
@@ -146,6 +156,37 @@ body {
     to {
         transform: rotate(360deg);
     }
+}
+
+.wheel-number-markers {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 5;
+}
+
+.wheel-number {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    transform-origin: center;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-shadow: 0 0 6px rgba(0, 0, 0, 0.9);
+    letter-spacing: 0.5px;
+}
+
+.wheel-number.red {
+    color: #ff6b6b;
+}
+
+.wheel-number.black {
+    color: #f0f0f0;
+}
+
+.wheel-number.green {
+    color: #8dff9c;
 }
 
 .betting-board {
@@ -220,17 +261,28 @@ body {
 
 .dozen-bet {
     grid-row: 4;
-    grid-column: 2 / span 4;
     background-color: #444;
     color: white;
     font-size: 0.9em;
+}
+
+.first-dozen {
+    grid-column: 2 / span 4;
+}
+
+.second-dozen {
+    grid-column: 6 / span 4;
+}
+
+.third-dozen {
+    grid-column: 10 / span 4;
 }
 
 .outside-bets {
     grid-row: 5;
     grid-column: 2 / span 12;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 5px;
 }
 
@@ -241,6 +293,10 @@ body {
 
 .red-bet {
     background-color: #d62828 !important;
+}
+
+.black-bet {
+    background-color: #111111 !important;
 }
 
 .ui-footer {
