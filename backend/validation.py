@@ -456,6 +456,220 @@ def validate_geometric(rng, n_samples=10000, p=0.3):
     }
 
 
+# =============================================================================
+# COMPARISON VALIDATION FUNCTIONS (Library vs Manual Methods)
+# =============================================================================
+
+def compare_exponential(rng, n_samples=10000, lam=1.0):
+    """
+    Compare exponential distribution: library vs manual (inverse transform).
+    
+    Generates samples from both implementations and validates each,
+    returning both sets of samples for visualization or further analysis.
+    
+    Args:
+        rng: RNG instance to test
+        n_samples: Number of samples to generate per method
+        lam: Rate parameter λ
+        
+    Returns:
+        Dict with both method results and samples
+    """
+    # Generate samples from both methods
+    samples_manual = [rng.expo(lam) for _ in range(n_samples)]
+    samples_library = [rng.expo_library(lam) for _ in range(n_samples)]
+    
+    # Validate both
+    cdf = exponential_cdf(lam)
+    d_manual, p_manual = kolmogorov_smirnov_statistic(samples_manual, cdf)
+    d_library, p_library = kolmogorov_smirnov_statistic(samples_library, cdf)
+    
+    # Compute statistics
+    mean_manual = sum(samples_manual) / n_samples
+    mean_library = sum(samples_library) / n_samples
+    std_manual = math.sqrt(sum((x - mean_manual)**2 for x in samples_manual) / n_samples)
+    std_library = math.sqrt(sum((x - mean_library)**2 for x in samples_library) / n_samples)
+    
+    expected_mean = 1 / lam
+    expected_std = 1 / lam
+    
+    return {
+        'distribution': f'Exponential(λ={lam})',
+        'n_samples': n_samples,
+        'manual': {
+            'method': 'inverse_transform',
+            'samples': samples_manual,
+            'ks_statistic': d_manual,
+            'p_value': p_manual,
+            'passed': p_manual > 0.05,
+            'sample_mean': mean_manual,
+            'sample_std': std_manual,
+        },
+        'library': {
+            'method': 'random.expovariate',
+            'samples': samples_library,
+            'ks_statistic': d_library,
+            'p_value': p_library,
+            'passed': p_library > 0.05,
+            'sample_mean': mean_library,
+            'sample_std': std_library,
+        },
+        'expected_mean': expected_mean,
+        'expected_std': expected_std,
+    }
+
+
+def compare_normal(rng, n_samples=10000, mean=0.0, std=1.0):
+    """
+    Compare normal distribution: library vs Box-Muller vs Marsaglia.
+    
+    Generates samples from all three implementations and validates each,
+    returning all sets of samples for visualization or further analysis.
+    
+    Args:
+        rng: RNG instance to test
+        n_samples: Number of samples to generate per method
+        mean: Distribution mean (μ)
+        std: Distribution standard deviation (σ)
+        
+    Returns:
+        Dict with all method results and samples
+    """
+    # Generate samples from all methods
+    samples_library = [rng.normal(mean, std) for _ in range(n_samples)]
+    samples_box_muller = [rng.normal_box_muller(mean, std) for _ in range(n_samples)]
+    samples_marsaglia = [rng.normal_marsaglia(mean, std) for _ in range(n_samples)]
+    
+    # Validate all
+    cdf = normal_cdf(mean, std)
+    d_library, p_library = kolmogorov_smirnov_statistic(samples_library, cdf)
+    d_box_muller, p_box_muller = kolmogorov_smirnov_statistic(samples_box_muller, cdf)
+    d_marsaglia, p_marsaglia = kolmogorov_smirnov_statistic(samples_marsaglia, cdf)
+    
+    # Helper to compute stats
+    def compute_stats(samples):
+        sample_mean = sum(samples) / n_samples
+        sample_std = math.sqrt(sum((x - sample_mean)**2 for x in samples) / n_samples)
+        return sample_mean, sample_std
+    
+    mean_lib, std_lib = compute_stats(samples_library)
+    mean_bm, std_bm = compute_stats(samples_box_muller)
+    mean_mars, std_mars = compute_stats(samples_marsaglia)
+    
+    return {
+        'distribution': f'Normal(μ={mean}, σ={std})',
+        'n_samples': n_samples,
+        'library': {
+            'method': 'random.gauss',
+            'samples': samples_library,
+            'ks_statistic': d_library,
+            'p_value': p_library,
+            'passed': p_library > 0.05,
+            'sample_mean': mean_lib,
+            'sample_std': std_lib,
+        },
+        'box_muller': {
+            'method': 'Box-Muller transform',
+            'samples': samples_box_muller,
+            'ks_statistic': d_box_muller,
+            'p_value': p_box_muller,
+            'passed': p_box_muller > 0.05,
+            'sample_mean': mean_bm,
+            'sample_std': std_bm,
+        },
+        'marsaglia': {
+            'method': 'Marsaglia polar',
+            'samples': samples_marsaglia,
+            'ks_statistic': d_marsaglia,
+            'p_value': p_marsaglia,
+            'passed': p_marsaglia > 0.05,
+            'sample_mean': mean_mars,
+            'sample_std': std_mars,
+        },
+        'expected_mean': mean,
+        'expected_std': std,
+    }
+
+
+def run_comparison_validations(seed=42, n_samples=10000):
+    """
+    Run comparison validations between library and manual implementations.
+    
+    This function compares the library-based RNG functions against
+    mathematical (non-library) implementations, returning samples from
+    both for visualization and analysis.
+    
+    Args:
+        seed: Random seed for reproducibility
+        n_samples: Number of samples per test
+        
+    Returns:
+        Dict with comparison results including samples from all methods
+    """
+    rng = RNG(seed)
+    
+    print("=" * 70)
+    print("COMPARISON: Library vs Mathematical Implementations")
+    print(f"Samples per test: {n_samples}")
+    print("=" * 70)
+    
+    results = {}
+    
+    # Exponential comparison
+    print("\n📊 EXPONENTIAL DISTRIBUTION")
+    print("-" * 70)
+    exp_result = compare_exponential(rng, n_samples, lam=1.0)
+    results['exponential'] = exp_result
+    
+    print(f"  Expected Mean: {exp_result['expected_mean']:.4f}, Expected Std: {exp_result['expected_std']:.4f}")
+    print()
+    for method_key in ['manual', 'library']:
+        method = exp_result[method_key]
+        status = "✅ PASS" if method['passed'] else "❌ FAIL"
+        print(f"  {method['method']}:")
+        print(f"    KS Statistic: {method['ks_statistic']:.4f}, p-value: {method['p_value']:.4f} {status}")
+        print(f"    Sample Mean: {method['sample_mean']:.4f}, Sample Std: {method['sample_std']:.4f}")
+    
+    # Normal comparison
+    print("\n📊 NORMAL DISTRIBUTION")
+    print("-" * 70)
+    norm_result = compare_normal(rng, n_samples, mean=0.0, std=1.0)
+    results['normal'] = norm_result
+    
+    print(f"  Expected Mean: {norm_result['expected_mean']:.4f}, Expected Std: {norm_result['expected_std']:.4f}")
+    print()
+    for method_key in ['library', 'box_muller', 'marsaglia']:
+        method = norm_result[method_key]
+        status = "✅ PASS" if method['passed'] else "❌ FAIL"
+        print(f"  {method['method']}:")
+        print(f"    KS Statistic: {method['ks_statistic']:.4f}, p-value: {method['p_value']:.4f} {status}")
+        print(f"    Sample Mean: {method['sample_mean']:.4f}, Sample Std: {method['sample_std']:.4f}")
+    
+    # Summary
+    print("\n" + "=" * 70)
+    all_passed = (
+        exp_result['manual']['passed'] and 
+        exp_result['library']['passed'] and
+        norm_result['library']['passed'] and 
+        norm_result['box_muller']['passed'] and 
+        norm_result['marsaglia']['passed']
+    )
+    total_tests = 5
+    passed_tests = sum([
+        exp_result['manual']['passed'],
+        exp_result['library']['passed'],
+        norm_result['library']['passed'],
+        norm_result['box_muller']['passed'],
+        norm_result['marsaglia']['passed'],
+    ])
+    print(f"SUMMARY: {passed_tests}/{total_tests} tests passed")
+    if all_passed:
+        print("✅ All implementations produce correctly distributed samples!")
+    print("=" * 70)
+    
+    return results
+
+
 def run_all_validations(seed=42, n_samples=10000):
     """
     Run all validation tests and print results.
@@ -525,4 +739,16 @@ def run_all_validations(seed=42, n_samples=10000):
 
 
 if __name__ == "__main__":
+    # Run comparison validations (library vs manual)
+    print("\n" + "=" * 70)
+    print("PART 1: COMPARISON VALIDATIONS")
+    print("=" * 70)
+    comparison_results = run_comparison_validations()
+    
+    print("\n\n")
+    
+    # Run all individual validations
+    print("=" * 70)
+    print("PART 2: ALL DISTRIBUTION VALIDATIONS")
+    print("=" * 70)
     run_all_validations()
