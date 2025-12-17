@@ -98,23 +98,43 @@ function setBallAngle(angleDeg) {
 
 // Anima a bola até ao slot indicado (index na ROULETTE_ORDER)
 function spinBallToSlot(slotIndex, durationSeconds) {
-    if (!ballElement) return;
-
-    const segmentAngle = 360 / ROULETTE_ORDER.length;
-    const targetAngle = slotIndex * segmentAngle + segmentAngle / 2;
-
-    // Faz algumas voltas completas antes de parar
-    const extraSpins = 4;
-    const normalizedCurrent = currentBallAngle % 360;
-    const deltaToTarget = ((targetAngle - normalizedCurrent) + 360) % 360;
-    const finalAngle = currentBallAngle + extraSpins * 360 + deltaToTarget;
-
-    ballElement.style.transition =
-        `transform ${durationSeconds}s cubic-bezier(0.1, 0.7, 1.0, 0.1)`;
-    setBallAngle(finalAngle);
-
-    currentBallAngle = finalAngle;
-}
+    return new Promise((resolve) => {
+      if (!ballElement) return resolve();
+  
+      const segmentAngle = 360 / ROULETTE_ORDER.length;
+      const targetAngle = slotIndex * segmentAngle + segmentAngle / 2;
+  
+      const normalizedCurrent = currentBallAngle % 360;
+  
+      const visualSpins = 6;
+      const startAngle = normalizedCurrent - visualSpins * 360;
+  
+      const deltaToTarget = (targetAngle - normalizedCurrent + 360) % 360;
+      const finalAngle = startAngle + 360 + deltaToTarget;
+  
+      // Reset transition then set a start angle (no animation)
+      ballElement.style.transition = "none";
+      setBallAngle(startAngle);
+  
+      // Force reflow so "none" is applied
+      ballElement.offsetHeight;
+  
+      // Resolve only when THIS transform transition ends
+      const onEnd = (e) => {
+        if (e.propertyName !== "transform") return;
+        ballElement.removeEventListener("transitionend", onEnd);
+        resolve();
+      };
+      ballElement.addEventListener("transitionend", onEnd);
+  
+      // Start the animation
+      ballElement.style.transition =
+        `transform ${durationSeconds}s cubic-bezier(0.22, 0.61, 0.36, 1)`;
+  
+      setBallAngle(finalAngle);
+      currentBallAngle = finalAngle;
+    });
+  }
 
 document.addEventListener('DOMContentLoaded', () => {
     const chipSelector = document.querySelector('.chip-selector');
@@ -347,7 +367,9 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             if (slotIndex !== null && slotIndex >= 0) {
-                spinBallToSlot(slotIndex, spinDuration);
+                playButton.disabled = true;
+                await spinBallToSlot(slotIndex, spinDuration);
+                playButton.disabled = false;
             } else {
                 console.warn("Não foi possível determinar o slot da resposta:", data);
             }
