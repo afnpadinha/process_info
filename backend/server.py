@@ -25,39 +25,140 @@ def ping():
     return jsonify({"message": "backend OK"})
 
 
+def evaluate_bet(bet_type: str, landing_number: int) -> tuple:
+    """
+    Evaluate a bet and return (is_winner, payout_multiplier).
+    
+    Bet types from frontend:
+    - "0" to "36": single number bets (35:1)
+    - "red", "black": color bets (1:1)
+    - "par", "impar": even/odd bets (1:1)
+    - "1-18", "19-36": low/high bets (1:1)
+    - "1st12", "2nd12", "3rd12": dozen bets (2:1)
+    - "col1", "col2", "col3": column bets (2:1)
+    """
+    # Single number bet (0-36)
+    if bet_type.isdigit() or bet_type == "0":
+        number = int(bet_type)
+        if number == landing_number:
+            return True, 35  # 35:1 payout (plus original bet returned)
+        return False, 0
+    
+    # Color bets
+    if bet_type == "red":
+        red_numbers = config.COLOR_MAP["1"]
+        return landing_number in red_numbers, 1
+    if bet_type == "black":
+        black_numbers = config.COLOR_MAP["2"]
+        return landing_number in black_numbers, 1
+    
+    # Even/Odd bets (0 loses)
+    if bet_type == "par":  # even
+        if landing_number == 0:
+            return False, 0
+        return landing_number % 2 == 0, 1
+    if bet_type == "impar":  # odd
+        if landing_number == 0:
+            return False, 0
+        return landing_number % 2 == 1, 1
+    
+    # Low/High bets (0 loses)
+    if bet_type == "1-18":
+        return 1 <= landing_number <= 18, 1
+    if bet_type == "19-36":
+        return 19 <= landing_number <= 36, 1
+    
+    # Dozen bets (0 loses)
+    if bet_type == "1st12":
+        return landing_number in config.DOZEN_MAP["1"], 2
+    if bet_type == "2nd12":
+        return landing_number in config.DOZEN_MAP["2"], 2
+    if bet_type == "3rd12":
+        return landing_number in config.DOZEN_MAP["3"], 2
+    
+    # Column bets (0 loses)
+    if bet_type == "col1":
+        return landing_number in config.COLUMNS["1"], 2
+    if bet_type == "col2":
+        return landing_number in config.COLUMNS["2"], 2
+    if bet_type == "col3":
+        return landing_number in config.COLUMNS["3"], 2
+    
+    # Unknown bet type
+    return False, 0
+
+
 @app.route("/api/spin", methods=["POST"])
 def spin():
     """
-    Espera um JSON do tipo:
+    Expects JSON with an array of bets:
+    {
+      "bets": [
+        {"betType": "17", "amount": 10, "number": 17},
+        {"betType": "red", "amount": 5, "number": null},
+        {"betType": "1st12", "amount": 10, "number": null}
+      ]
+    }
+    
+    Also supports legacy single-bet format for backwards compatibility:
     {
       "amount": 10,
       "number": 17
     }
     """
-
     data = request.get_json(force=True) or {}
-    amount = float(data.get("amount", 0))
-    chosen_number = int(data.get("number", -1))
-
-    # 1) simular a roleta
-    slot_index = spin_engine.simulate()           # índice 0..36
-    landing_number = config.WHEEL[slot_index]     # número real da roleta
-
-    # 2) calcular payout simples: acerta número -> 36x, senão 0
-    if chosen_number == landing_number:
-        payout = amount * 36
-        win = True
-    else:
-        payout = 0.0
-        win = False
-
+    
+    # 1) Spin the wheel
+    slot_index = spin_engine.simulate()           # index 0..36
+    landing_number = config.WHEEL[slot_index]     # actual roulette number
+    
+    # 2) Handle bets - support both array format and legacy single-bet format
+    bets_input = data.get("bets", [])
+    
+    # Legacy format support
+    if not bets_input and "number" in data:
+        bets_input = [{
+            "betType": str(data.get("number", -1)),
+            "amount": float(data.get("amount", 0)),
+            "number": data.get("number")
+        }]
+    
+    # 3) Evaluate each bet
+    total_bet = 0.0
+    total_payout = 0.0
+    results = []
+    any_win = False
+    
+    for bet in bets_input:
+        bet_type = bet.get("betType", "")
+        amount = float(bet.get("amount", 0))
+        total_bet += amount
+        
+        is_winner, multiplier = evaluate_bet(bet_type, landing_number)
+        
+        if is_winner:
+            # Payout = bet amount * multiplier + original bet returned
+            payout = amount * multiplier + amount
+            any_win = True
+        else:
+            payout = 0.0
+        
+        total_payout += payout
+        
+        results.append({
+            "betType": bet_type,
+            "amount": amount,
+            "win": is_winner,
+            "payout": payout
+        })
+    
     return jsonify({
-        "chosen_number": chosen_number,
         "landing_slot_index": slot_index,
         "landing_number": landing_number,
-        "bet_amount": amount,
-        "payout": payout,
-        "win": win
+        "total_bet": total_bet,
+        "total_payout": total_payout,
+        "win": any_win,
+        "results": results
     })
 
 

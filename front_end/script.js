@@ -318,21 +318,21 @@ document.addEventListener('DOMContentLoaded', () => {
     const playButton = document.querySelector('.play-btn');
 
     playButton.addEventListener('click', async () => {
-        if (!currentNumberBet) {
-            alert("Coloca pelo menos uma aposta num número primeiro.");
+        if (!bets.length) {
+            alert("Coloca pelo menos uma aposta primeiro.");
             return;
         }
 
         const spinDuration = 3 + Math.random() * 2; // 3–5 segundos
 
         try {
-            // enviar aposta para o backend
+            // enviar todas as apostas para o backend
             const response = await fetch("/api/spin", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(currentNumberBet),
+                body: JSON.stringify({ bets: bets }),
             });
 
             const data = await response.json();
@@ -353,12 +353,11 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             // atualizar saldo e último ganho
-            // 4) Actualizar saldo e último ganho
             const currentBalanceRaw = balanceDisplay.textContent.replace("€", "").trim();
             const currentBalance = parseFloat(currentBalanceRaw) || 0;
 
-            const betAmount = Number(currentNumberBet.amount) || 0;
-            const payoutTotal = Number(data.payout || 0);   // total devolvido pelo backend
+            const betAmount = Number(data.total_bet) || 0;
+            const payoutTotal = Number(data.total_payout) || 0;
 
             // saldo = saldo - aposta + payout total
             const newBalance = currentBalance - betAmount + payoutTotal;
@@ -373,7 +372,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 betAmount,
                 payoutTotal,
                 newBalance,
-                netWin
+                netWin,
+                results: data.results
             });
 
             // guardar ronda para REAPOSTAR
