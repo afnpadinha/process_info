@@ -17,16 +17,18 @@ class SpinEngine:
         #Random Continuous Vars: 
         base_angle = (omega * tspin) % 360 #some random angle determined by the physical-ish part
         phase = self.rng.uniform(0.0, 360.0) #independent random “rotation” uniformly spread over [0, 360]
+        friction_noise = self.rng.gamma(self.config.FRICTION_SHAPE, self.config.FRICTION_SCALE)
         #Random variable
-        landing_angle = (base_angle + phase) % 360
+        landing_angle = (base_angle * friction_noise + phase) % 360
 
         # Map the landing angle into a slot index.
-        slot_width = 360 / self.config.NUM_SLOT
-        slot = int(landing_angle / slot_width)
+        initial_slot = 360 / self.config.NUM_SLOT
+        bounce_offset = self.rng.laplace(0, self.config.BOUNCE_DIVERSITY)
+        final_slot = int((initial_slot + bounce_offset) % self.config.NUM_SLOT)
 
         # Alternatively, sample directly from the slot indices:
         # return self.rng.uniform_int(0, self.config.NUM_SLOT - 1)
-        return slot
+        return final_slot
 
 if __name__ == "__main__":
     from .rng import RNG

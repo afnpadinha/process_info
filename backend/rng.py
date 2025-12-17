@@ -20,3 +20,17 @@ class RNG:
         # Inverse transform sampling for exponential distribution.
         u = self.uniform(0.0, 1.0)
         return (-math.log(1 - u) / lam)
+
+    def gamma(self, shape, scale):
+        # random.Random uses gammavariate(alpha, beta)
+        return self.random.gammavariate(shape, scale)
+
+    def laplace(self, mu, b):
+        """
+        Generate Laplace noise using the difference of two Exponentials.
+        L(mu, b) is equivalent to mu + Exponential(1/b) - Exponential(1/b).
+        """
+        # The scale of the exponential is the 'b' parameter of Laplace
+        e1 = self.expo(1/b)
+        e2 = self.expo(1/b)
+        return mu + e1 - e2

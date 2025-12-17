@@ -87,7 +87,7 @@ class BettingEngine:
                 print("YOU WON!!🎉")
                 return
             else:
-                print("Better luck next time😕")
+                print("You lost better luck next time😕")
                 return
 
 
