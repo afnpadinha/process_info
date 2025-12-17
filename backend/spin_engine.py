@@ -12,6 +12,7 @@ class SpinEngine:
         omega = self.rng.normal(self.config.OMEGA_MEAN,
                                 self.config.OMEGA_STD)
         tspin = self.rng.expo(self.config.TSPIN_LAMBDA)
+        
 
         # Compute the base travel angle and add an independent phase offset.
         #Random Continuous Vars: 
