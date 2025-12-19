@@ -292,6 +292,38 @@ class RNG:
         """
         return self.random.betavariate(alpha, beta)
 
+    def laplace(self, mu=0.0, b=1.0):
+        """
+        Laplace (double exponential) distribution.
+        
+        The Laplace distribution is symmetric around the mean and has heavier
+        tails than the normal distribution. It's commonly used in robust
+        statistics and differential privacy.
+        
+        Mathematical Foundation:
+        -----------------------
+        PDF: f(x) = (1/(2b)) · exp(-|x - μ|/b)
+        Mean: μ
+        Variance: 2b²
+        
+        Implementation uses the difference of two exponentials:
+        If E₁, E₂ ~ Exponential(1/b) independent, then μ + E₁ - E₂ ~ Laplace(μ, b)
+        
+        This works because the Laplace distribution can be expressed as
+        the difference of two i.i.d. exponential random variables.
+        
+        Args:
+            mu: Location parameter μ (center of distribution)
+            b: Scale parameter b > 0 (controls spread)
+            
+        Returns:
+            Random sample from Laplace(μ, b)
+        """
+        # Generate two independent exponential samples
+        e1 = self.expo(1.0 / b)
+        e2 = self.expo(1.0 / b)
+        return mu + e1 - e2
+
     # =========================================================================
     # DISCRETE DISTRIBUTIONS
     # =========================================================================
@@ -565,6 +597,7 @@ if __name__ == "__main__":
     print(f"  Exponential(λ=1):     {rng.expo(1.0):.4f}")
     print(f"  Gamma(2, 1):          {rng.gamma(2, 1):.4f}")
     print(f"  Beta(2, 5):           {rng.beta(2, 5):.4f}")
+    print(f"  Laplace(0, 1):        {rng.laplace(0, 1):.4f}")
     
     print("\n📊 Discrete Distributions:")
     print(f"  Bernoulli(0.7):       {rng.bernoulli(0.7)}")

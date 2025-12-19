@@ -141,6 +141,32 @@ def geometric_pmf(p):
     return pmf
 
 
+def gamma_pdf(alpha, beta):
+    """
+    Gamma distribution PDF.
+    
+    PDF: f(x) = (β^α / Γ(α)) · x^(α-1) · e^(-βx) for x > 0
+    """
+    def pdf(x):
+        if x <= 0:
+            return 0.0
+        # Use math.gamma for the gamma function Γ(α)
+        coef = (beta ** alpha) / math.gamma(alpha)
+        return coef * (x ** (alpha - 1)) * math.exp(-beta * x)
+    return pdf
+
+
+def laplace_pdf(mu, b):
+    """
+    Laplace (double exponential) distribution PDF.
+    
+    PDF: f(x) = (1/(2b)) · exp(-|x - μ|/b)
+    """
+    def pdf(x):
+        return (1.0 / (2.0 * b)) * math.exp(-abs(x - mu) / b)
+    return pdf
+
+
 # =============================================================================
 # DEMO FUNCTIONS
 # =============================================================================
@@ -155,7 +181,7 @@ def demo_continuous_distributions(seed=42, n_samples=10000):
     
     rng = RNG(seed)
     
-    fig, axes = plt.subplots(2, 3, figsize=(15, 10))
+    fig, axes = plt.subplots(3, 3, figsize=(15, 14))
     fig.suptitle('Continuous Probability Distributions\n(Information Processing Class)', 
                  fontsize=14, fontweight='bold')
     
@@ -188,6 +214,21 @@ def demo_continuous_distributions(seed=42, n_samples=10000):
     samples = [rng.normal_marsaglia(0, 1) for _ in range(n_samples)]
     create_histogram_with_pdf(axes[1, 2], samples, normal_pdf(0, 1), 
                               (-4, 4), 'Normal(μ=0, σ=1)\nMarsaglia Polar')
+    
+    # Gamma(α=2, β=1)
+    samples = [rng.gamma(2.0, 1.0) for _ in range(n_samples)]
+    create_histogram_with_pdf(axes[2, 0], samples, gamma_pdf(2.0, 1.0), 
+                              (0, 8), 'Gamma(α=2, β=1)', color='forestgreen')
+    
+    # Gamma(α=5, β=1) - more bell-shaped
+    samples = [rng.gamma(5.0, 1.0) for _ in range(n_samples)]
+    create_histogram_with_pdf(axes[2, 1], samples, gamma_pdf(5.0, 1.0), 
+                              (0, 12), 'Gamma(α=5, β=1)', color='forestgreen')
+    
+    # Laplace(μ=0, b=1)
+    samples = [rng.laplace(0.0, 1.0) for _ in range(n_samples)]
+    create_histogram_with_pdf(axes[2, 2], samples, laplace_pdf(0.0, 1.0), 
+                              (-6, 6), 'Laplace(μ=0, b=1)\nDifference of Exponentials', color='darkorange')
     
     plt.tight_layout()
     plt.savefig('continuous_distributions.png', dpi=150, bbox_inches='tight')
